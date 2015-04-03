@@ -1,0 +1,91 @@
+#!/usr/bin/env python
+#
+# List all the things
+
+import os
+import sys
+import json
+from pprint import pprint
+import pyrax
+from prettytable import PrettyTable
+import click
+
+# credentials
+pyrax.set_setting("identity_type", "rackspace")
+creds_file = os.path.expanduser("~/xar/.rackspace_cloud_credentials")
+ctx = pyrax.create_context()
+ctx.set_credential_file(creds_file)
+ctx.authenticate()
+
+# prettytable
+ptsv = PrettyTable(["Service", "Name", "ID", "Status", "Public IP", "Private IP", "Region"])
+ptsv.align = "l"
+ptlb = PrettyTable(["Service", "Name", "ID", "Status", "Region"])
+ptlb.align = "l"
+ptdb = PrettyTable(["Service", "Name", "ID", "Status", "Region"])
+ptlb.align = "l"
+ptvl = PrettyTable(["Service", "Name", "ID", "Status", "Region"])
+ptvl.align = "l"
+
+# pull all regions and all services
+regions = ["DFW", "HKG", "IAD", "ORD", "SYD"]
+allservices = ["compute", "database", "load_balancer", "volume"]
+
+@click.group()
+def cli():
+    pass
+
+@cli.command()
+def list():
+    for i in regions:
+        for x in allservices:
+            client = ctx.get_client(x, i)
+            objlist = client.list()
+            for objs in objlist:
+                if (x == "compute"):
+                    ptsv.add_row(['\033[31mServers\033[0m', objs.name, objs.id, objs.status, objs.accessIPv4, objs.networks['private'][0], i])
+                elif (x == "database"):
+                    ptdb.add_row(['\033[32mDatabases\033[0m', objs.name, objs.id, objs.status, i])
+                elif (x == "load_balancer"):
+                    ptlb.add_row(['\033[33mLoad Balancers\033[0m', objs.name, objs.id, objs.status, i])
+                elif (x == "volume"):
+                    ptvl.add_row(['\033[34mBlock Storage\033[0m', objs.name, objs.id, objs.status, i])
+
+    click.echo(ptsv)
+    click.echo(ptdb)
+    click.echo(ptlb)
+    click.echo(ptvl)
+    
+@cli.command()
+@click.argument('id')
+def lb(id):
+    click.echo(ptvl)
+    client = ctx.get_client("load_balancer", "DFW")
+    lb = client.get(id)
+    print "Load Balancer:", lb.name
+    print "ID:", lb.id
+    print "Status:", lb.status
+    print "Nodes:", lb.nodes
+    print "Virtual IPs:", lb.virtual_ips
+    print "Algorithm:", lb.algorithm
+    print "Protocol:", lb.protocol
+
+@cli.command()
+@click.argument('id')
+def lb_stats(id):
+    client = ctx.get_client("load_balancer", "DFW")
+    lb = client.get(id)
+    stats = lb.manager.get_stats(id)
+    pprint(stats)
+    #print stats
+
+@cli.command()
+@click.argument('id')
+@click.argument('timeout')
+def lb_timeout(id, timeout):    
+    client = ctx.get_client("load_balancer", "DFW")
+    lb = client.get(id)
+    update = lb.update(timeout=timeout)
+
+if __name__ == '__main__':
+    cli() 
