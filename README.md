@@ -1,8 +1,10 @@
 # xar
 Attempt to use click
+
 Lists all servers/lb/block storage/database resources in Rackspace Cloud.
 
 Only partially works since I stopped working on it. 
+
 
 python allxar list - works
 
